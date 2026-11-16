@@ -2,8 +2,6 @@
 
 **Learn data science by playing.** You run a fruit-sorting factory and teach a robot to tell oranges from lemons. Each of the 5 shifts is a *different* real data science job, and a live **Data Science Notebook** next to the game shows the actual Python (pandas / scikit-learn), the DataFrame rows and the confusion matrix updating as you play.
 
-![Screenshot](assets/screenshot.png)
-
 ## Play
 
 - **Online:** enable GitHub Pages (Settings, Pages, Deploy from branch, `main` / root) and open `https://<your-username>.github.io/<repo-name>/`
