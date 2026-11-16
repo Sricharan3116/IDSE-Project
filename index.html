@@ -1,0 +1,143 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Sortbot Factory: Learn Data Science by Playing</title>
+<meta name="description" content="A browser game that teaches data science: classification, data cleaning, feature selection, overfitting and model drift. No install, one HTML file.">
+<meta property="og:title" content="Sortbot Factory">
+<meta property="og:description" content="Teach a robot to sort fruit and learn real data science through 5 different jobs.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap">
+<style>
+*{box-sizing:border-box}
+:root{--ink:#3b2a5a;--cream:#fff7e6;--or:#ff8c3d;--tl:#1fb5c9;--yl:#ffd447;--gr:#2ec4b6;--pk:#ff4d8d;color-scheme:dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:linear-gradient(160deg,#3a86ff,#8338ec) fixed;color:var(--ink);font:16px/1.45 Fredoka,"Trebuchet MS",system-ui,sans-serif;min-height:100vh}
+#hud{display:flex;flex-wrap:wrap;gap:8px;padding:10px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--ink);z-index:5;align-items:center}
+.logo{color:var(--yl);font-weight:700;font-size:20px;margin-right:auto}
+.chip{background:var(--yl);color:var(--ink);border-radius:12px;padding:4px 12px;font-weight:700;border:3px solid #0003}
+.tabs{display:flex;gap:6px}
+.b{background:var(--or);color:#fff;border:3px solid var(--ink);border-radius:14px;padding:6px 14px;margin:2px;font:inherit;font-weight:700;cursor:pointer;box-shadow:0 4px 0 var(--ink)}
+.b:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}.b.on{background:var(--gr)}.b.s{padding:4px 10px;background:#7a5cc7}
+.wrap{display:grid;grid-template-columns:minmax(0,560px) 1fr;gap:14px;padding:14px;max-width:1150px;margin:auto}
+@media(max-width:860px){.wrap{grid-template-columns:1fr}}
+.cd2{background:var(--cream);border:4px solid var(--ink);border-radius:22px;padding:12px;box-shadow:0 6px 0 #0004;min-width:0}
+h2{margin:0 0 6px;font-size:22px}
+canvas{width:100%;height:auto;display:block;border:3px solid var(--ink);border-radius:16px}
+#bm{cursor:grab;touch-action:none;margin-bottom:8px;background:#fff}
+.how{background:#e8f7ff;border:3px dashed var(--tl);border-radius:14px;padding:10px;margin:0 0 8px}
+.row{display:flex;gap:10px;align-items:center;margin:6px 0}.row input{flex:1;accent-color:var(--or)}.row b{min-width:34px}
+#hist span{display:inline-block;width:18px;height:18px;border-radius:6px;margin-right:3px;border:2px solid #0003}
+.nb{background:#2a1c4a;border:3px solid var(--ink);border-radius:16px;padding:10px;color:#e9e1ff;margin-top:10px}.nb h3{margin:0 0 4px;color:var(--yl);font-size:17px}
+.mu2{color:#b9a8ff;font:12px ui-monospace,Menlo,monospace;margin-top:6px}
+table.df{border-collapse:collapse;font:12px ui-monospace,Menlo,monospace;width:100%}.df td,.df th{padding:2px 6px;border-bottom:1px solid #5b4a8a;text-align:right}.df th{color:#b9a8ff}
+pre{margin:6px 0 0;white-space:pre-wrap;font:13px/1.4 ui-monospace,Menlo,monospace}.k{color:#ff7ad9}.s{color:#2ef5a0}.c{color:#8c82b3}.fn{color:#6fe3ff}
+.ov{position:fixed;inset:0;background:#1b0f3399;display:none;align-items:center;justify-content:center;z-index:20;padding:16px}.ov.on{display:flex}
+.card{max-width:520px;background:var(--cream);border:5px solid var(--ink);border-radius:26px;padding:22px;box-shadow:0 8px 0 #0005}
+.good{color:#0a9b8a}.warn{color:#d6246e}.star{font-size:34px;color:#ffb400;letter-spacing:4px}
+</style></head><body>
+<div id="hud"><div class="logo">&#129302; SORTBOT FACTORY</div><div id="tabs" class="tabs"></div>
+<span class="chip">&#128176; <b id="hp">$0</b></span><span class="chip">&#127919; <b id="ha">-</b></span><span class="chip">&#127818; <b id="hl"></b></span>
+<button class="b s" id="sp">&#9193; 1x</button><button class="b s" id="pz">&#9208;</button><button class="b s" id="mu">&#128266;</button></div>
+<div class="wrap"><div class="cd2"><canvas id="bm" width="520" height="340"></canvas><canvas id="bt" width="520" height="150"></canvas></div>
+<aside class="cd2"><h2 id="ttl"></h2><div class="how" id="memo"></div><div id="ctl"></div>
+<div><b>Quality monitor</b> <span id="hist"></span></div><p id="tick" style="min-height:44px;margin:8px 0"></p>
+<div class="nb"><h3>&#128211; Data Science Notebook (live)</h3><div class="mu2">df.tail()</div><div id="df"></div><pre id="code"></pre><div class="mu2">confusion_matrix(y, pred)</div><div id="cm"></div></div></aside></div>
+<div class="ov" id="ov"><div class="card" id="cd"></div></div>
+<script>
+const $=s=>document.querySelector(s),bc=$('#bm'),b=bc.getContext('2d'),tc=$('#bt'),t=tc.getContext('2d'),BW=520,BH=340,GX=300,LANE=82,INK='#3b2a5a',CA='#ff8c3d',CB='#1fb5c9';
+const mul=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let q=Math.imul(a^a>>>15,1|a);q=q+Math.imul(q^q>>>7,61|q)^q;return((q^q>>>14)>>>0)/4294967296};
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const hl=c=>esc(c).replace(/(#.*$)|("[^"\n]*")|\b(import|from)\b|\b(-?\d+\.?\d*)\b|\b([A-Za-z_]\w*)(?=\()/gm,(m,a,s,k,n,f)=>a?'<span class=c>'+a+'</span>':s?'<span class=s>'+s+'</span>':k?'<span class=k>'+k+'</span>':n?'<span class=s>'+n+'</span>':'<span class=fn>'+f+'</span>');
+let AC,muted=false;function tone(f,d=.1,ty='sine',v=.05,w=0){if(muted)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),q=AC.createGain(),T=AC.currentTime+w;o.type=ty;o.frequency.value=f;q.gain.setValueAtTime(v,T);q.gain.exponentialRampToValueAtTime(.0001,T+d);o.connect(q);q.connect(AC.destination);o.start(T);o.stop(T+d+.02)}catch(e){}}
+const sfx={ok:()=>tone(880,.08,'triangle',.04),err:()=>tone(150,.2,'sawtooth',.05),win:()=>[392,523,659,784,1046].forEach((f,i)=>tone(f,.18,'triangle',.07,i*.09)),click:()=>tone(600,.05,'square',.03)};
+$('#mu').onclick=()=>{muted=!muted;$('#mu').innerHTML=muted?'&#128263;':'&#128266;'};
+const SN=['colour','size','weight','price_tag','smell'];
+const ST=[
+{n:'Draw the Line',bg:['#3a86ff','#8338ec'],N:22,iv:1100,mA:[.25,.62],mB:[.75,.38],sd:[.07,.07],st:[.6,.8,.9],memo:'<b>Skill: classification.</b> Each fruit has a colour (left to right) and a size (bottom to top). Drag the yellow handles so oranges fall on the orange side and lemons on the teal side.',lr:['Decision boundary','Your line is a decision boundary: one side goes to one crate, the other side to the other. That is exactly what a classifier does.']},
+{n:'Clean the Belt',bg:['#f72585','#7209b7'],N:24,iv:1500,mA:[.25,.65],mB:[.75,.35],sd:[.08,.08],st:[.35,.5,.65],memo:'<b>Skill: data cleaning.</b> The robot now learns by itself, but the belt carries dirty data: <b>?</b> = missing value, <b>!!</b> = outlier, <b>copy</b> = duplicate. Pick the right pandas tool for the glowing fruit before it reaches the robot. Bad data wrecks its brain!',lr:['Data cleaning','Models learn whatever you feed them. Missing values, outliers and duplicates quietly corrupt training, so cleaning data comes first in every real project.']},
+{n:'Pick the Sensors',bg:['#06d6a0','#118ab2'],N:30,iv:1100,sd:[.2,.13],st:[.45,.65,.8],memo:'<b>Skill: feature selection.</b> Choose exactly 2 sensors and the robot trains itself on them. Some are useless, some are great. One looks too good to be true: near the end there is an <b>audit</b> with real production data.',lr:['Feature selection and leakage','A feature that looks perfect in training (price_tag) may not exist in production. That is data leakage. Good features are informative AND available at prediction time.']},
+{n:'Tune the Brain',bg:['#4361ee','#4cc9f0'],N:34,iv:950,mA:[.36,.6],mB:[.64,.4],sd:[.15,.15],st:[.5,.65,.8],memo:'<b>Skill: overfitting.</b> The robot memorises past fruit (20% of the labels are wrong!) and copies the k nearest. Slide <b>k</b> and the <b>memory size</b>. k=1 looks perfect on practice fruit but check the REAL accuracy on new fruit.',lr:['Overfitting','A tiny k memorises noise: perfect practice score, poor real score. A larger k smooths the noise out. Always judge a model on data it has not seen.']},
+{n:'Drift Watch',bg:['#ff9f1c','#e71d36'],N:40,iv:950,mA:[.25,.65],mB:[.75,.35],sd:[.08,.08],ph:[{A:[.25,.65],B:[.75,.35]},{A:[.25,.65],B:[.5,.3]},{A:[.55,.72],B:[.85,.3]}],st:[.4,.55,.7],memo:'<b>Skill: monitoring and retraining.</b> Your model is frozen. When the weather changes the fruit, it gets worse. Watch the <b>quality monitor</b> and press <b>Retrain</b> at the right moment. Each retrain costs $25 and learns from the last 15 fruit.',lr:['Drift monitoring','Deployed models decay when the world changes. Teams monitor accuracy and retrain at the right time: too early wastes money, too late loses customers.']}];
+const RK=['Apprentice Sorter','Shift Supervisor','Factory Engineer','Head of ML','Sorting Legend'];
+let M={tp:0,tn:0,fp:0,fn:0},lv=0,C,items=[],dots=[],hist=[],fx=[],clog=[],mem=[],sel=[0,1],sp=0,cor=0,wr=0,wo=0,wl=0,prof=0,spT=0,spd=1,paused=false,run=false,W=[0,0],B0=0,H=[[.5,.05],[.5,.95]],ban='',banT=0,best=[0,0,0,0,0],rng,drag=-1,MA,MB,lastT=0,off=0,k=3,msz=30,retr=0,gp=null,seen={};
+const gauss=()=>Math.sqrt(-2*Math.log(rng()+1e-9))*Math.cos(6.2832*rng()),cl=v=>Math.max(.02,Math.min(.98,v)),pt=f=>[f[sel[0]],f[sel[1]]],cv=v=>isFinite(v)?Math.max(0,Math.min(1,v)):.5;
+function fromH(){const a=[H[0][0]-.5,H[0][1]-.5],c=[H[1][0]-.5,H[1][1]-.5];let n=[-(c[1]-a[1]),c[0]-a[0]];const L=Math.hypot(n[0],n[1])||1;n=[n[0]/L*10,n[1]/L*10];let bb=-(n[0]*a[0]+n[1]*a[1]);if(n[0]*(MA[0]-.5)+n[1]*(MA[1]-.5)+bb<n[0]*(MB[0]-.5)+n[1]*(MB[1]-.5)+bb){n=[-n[0],-n[1]];bb=-bb}W=n;B0=bb}
+function toH(){const n=Math.hypot(W[0],W[1])||1,c=[-B0*W[0]/(n*n),-B0*W[1]/(n*n)],d=[-W[1]/n,W[0]/n];H=[[.5+c[0]-.5*d[0],.5+c[1]-.5*d[1]],[.5+c[0]+.5*d[0],.5+c[1]+.5*d[1]]]}
+function knn(x,y){if(!mem.length)return 0;const d=mem.map(m=>[(m.x-x)**2+(m.y-y)**2,m.l]).sort((a,c)=>a[0]-c[0]),kk=Math.min(k,d.length);let s=0;for(let i=0;i<kk;i++)s+=d[i][1];return s/kk>=.5?1:0}
+const cls=(x,y)=>lv==3?knn(x,y):W[0]*(x-.5)+W[1]*(y-.5)+B0>0?0:1;
+function tick(s,c){$('#tick').className=c||'';$('#tick').textContent=s}
+function code(){const n=cor+wr,a=n?(cor/n).toFixed(2):'n/a',c0=SN[sel[0]],c1=SN[sel[1]],{tp,tn,fp,fn}=M,pr=tp/(tp+fp||1),rc=tp/(tp+fn||1),f1=2*pr*rc/((pr+rc)||1),w='# w = ['+W[0].toFixed(1)+', '+W[1].toFixed(1)+'], b = '+B0.toFixed(1);let s;
+ if(lv==0)s='# 1. Features and label\nX = df[["colour", "size"]]\ny = df["is_lemon"]\n# 2. Your line IS the model\nclf = LogisticRegression()\nclf.coef_, clf.intercept_ = [['+W[0].toFixed(1)+', '+W[1].toFixed(1)+']], ['+B0.toFixed(1)+']\n# 3. Evaluate\naccuracy_score(y, clf.predict(X))   # '+a;
+ else if(lv==1)s='# 1. Clean the dirty rows\n'+(clog.slice(-3).join('\n')||'# (waiting for dirty data...)')+'\n# 2. Learn from clean rows only\nclf = SGDClassifier(loss="log_loss")\nclf.partial_fit(X_clean, y_clean, classes=[0, 1])\n'+w+'\naccuracy_score(y, clf.predict(X))   # '+a;
+ else if(lv==2)s='# 1. Pick features\nX = df[["'+c0+'", "'+c1+'"]]\ny = df["is_lemon"]\n# 2. Train on them\nclf = SGDClassifier(loss="log_loss").partial_fit(X, y, classes=[0, 1])\n'+w+'\n# 3. Evaluate (audit uses production data)\naccuracy_score(y, clf.predict(X))   # '+a;
+ else if(lv==3){const pa=mem.length?mem.filter(m=>knn(m.x,m.y)===m.l).length/mem.length:0;s='knn = KNeighborsClassifier(n_neighbors='+k+')\nknn.fit(X_memory, y_memory)   # '+mem.length+' rows\nknn.score(X_memory, y_memory) # practice: '+pa.toFixed(2)+'\nknn.score(X_new, y_new)       # REAL:     '+a}
+ else s='# frozen model, retrained '+retr+' time(s)\nclf = LogisticRegression()\nclf.fit(X_recent, y_recent)   # click Retrain\n'+w+'\n# rolling accuracy (last 8): '+(hist.length?(hist.slice(-8).filter(x=>x).length/Math.min(8,hist.length)).toFixed(2):'n/a')+'\naccuracy_score(y, clf.predict(X))   # '+a;
+ $('#code').innerHTML=hl(s);const f=v=>isFinite(v)?v.toFixed(2):'NaN';
+ $('#df').innerHTML='<table class="df"><tr><th></th><th>'+c0+'</th><th>'+c1+'</th><th>is_lemon</th><th>pred</th></tr>'+dots.slice(-5).map((d,i)=>'<tr style="color:'+(d.ok?'#9dffd9':'#ff9bc0')+'"><td>'+(dots.length-Math.min(5,dots.length)+i)+'</td><td>'+f(d.f[sel[0]])+'</td><td>'+f(d.f[sel[1]])+'</td><td>'+d.c+'</td><td>'+d.pc+'</td></tr>').join('')+'</table>';
+ $('#cm').innerHTML='<table class="df"><tr><th>actual / pred</th><th>orange</th><th>lemon</th></tr><tr><td>orange</td><td style="color:#9dffd9">'+tn+'</td><td style="color:#ff9bc0">'+fp+'</td></tr><tr><td>lemon</td><td style="color:#ff9bc0">'+fn+'</td><td style="color:#9dffd9">'+tp+'</td></tr></table><div class="mu2">precision '+pr.toFixed(2)+' | recall '+rc.toFixed(2)+' | F1 '+f1.toFixed(2)+'</div>'}
+function hud(){const left=C.N-sp+items.filter(i=>!i.res).length;$('#hp').textContent='$'+prof;$('#ha').textContent=cor+wr?Math.round(cor/(cor+wr)*100)+'%':'-';$('#hl').textContent=left;$('#hist').innerHTML=hist.slice(-14).map(h=>'<span style="background:'+(h?'#2ec4b6':'#ff4d8d')+'"></span>').join('');
+ $('#tabs').innerHTML=[0,1,2,3,4].map(i=>'<button class="b s'+(i==lv?' on':'')+'" onclick="goLv('+i+')">'+(i+1)+(best[i]?' &#9733;'.repeat(best[i]):'')+'</button>').join('')}
+function ctl(){$('#ctl').innerHTML=lv==1?[['fill','fillna(median)'],['drop','dropna()'],['clip','clip(IQR)'],['dup','drop_duplicates()']].map(x=>'<button class="b" onclick="tool(\''+x[0]+'\')">'+x[1]+'</button>').join(''):lv==2?'Sensors (pick 2): '+SN.map((n,i)=>'<button class="b'+(sel.includes(i)?' on':'')+'" onclick="pick('+i+')">'+n+'</button>').join(''):lv==3?'<div class="row">k neighbours <input type="range" min="1" max="15" value="'+k+'" oninput="k=+this.value;gp=null;$(\'#vk\').textContent=k;code()"><b id="vk">'+k+'</b></div><div class="row">Memory size <input type="range" min="5" max="60" value="'+msz+'" oninput="msz=+this.value;mem=mem.slice(-msz);gp=null;$(\'#vm\').textContent=msz;code()"><b id="vm">'+msz+'</b></div>':lv==4?'<button class="b" onclick="retrain()">&#128260; Retrain ($25)</button>':''}
+function card(h){$('#cd').innerHTML=h;$('#ov').classList.add('on')}
+function goLv(i){lv=i;C=ST[i];rng=mul(i*17+3);items=[];dots=[];hist=[];fx=[];clog=[];sp=0;cor=wr=wo=wl=prof=0;M={tp:0,tn:0,fp:0,fn:0};spT=C.iv-200;ban='';run=false;sel=[0,1];W=[0,0];B0=0;k=3;msz=30;retr=0;gp=null;H=[[.5,.05],[.5,.95]];MA=C.mA||[.25,.65];MB=C.mB||[.75,.35];fromH();
+ mem=[];if(i==3)for(let n=0;n<8;n++){const c=n%2,m=c?C.mB:C.mA;mem.push({x:cl(m[0]+C.sd[0]*gauss()),y:cl(m[1]+C.sd[1]*gauss()),l:c})}
+ if(i>0&&i<3){W=[0,0];B0=0}document.body.style.background='linear-gradient(160deg,'+C.bg[0]+','+C.bg[1]+') fixed';
+ $('#ttl').textContent='Shift '+(i+1)+': '+C.n;$('#memo').innerHTML='<b class="good">MANAGER:</b> '+C.memo;ctl();tick(i==0?'Drag the yellow handles (or tap the map) to move the line.':'');hud();code();
+ card('<h2>Shift '+(i+1)+': '+C.n+'</h2><p>'+C.memo+'</p><p>The notebook on the right shows the same steps a data scientist follows. No fail here, just earn up to 3 stars.</p><p><button class="b" id="go">Start shift</button></p>');$('#go').onclick=()=>{sfx.click();$('#ov').classList.remove('on');run=true}}
+function gen(c){const s=C.sd;let m,f;if(lv==2)return[cl((c?.55:.45)+.2*gauss()),cl((c?.4:.6)+.13*gauss()),cl((c?.7:.3)+.12*gauss()),sp<C.N*2/3?cl((c?.9:.1)+.03*gauss()):rng(),cl(.5+.22*gauss())];
+ m=lv==4?C.ph[sp<10?0:sp<24?1:2][c?'B':'A']:c?C.mB:C.mA;return[cl(m[0]+s[0]*gauss()),cl(m[1]+s[1]*gauss()),.5,.5,cl(.5+.2*gauss())]}
+function spawn(){const c=rng()<.5?0:1,f=gen(c),it={f,c,px:0,res:0,dy:0,flaw:null};
+ if(lv==1&&rng()<.6){it.flaw=['nan','out','dup'][rng()*3|0];if(it.flaw=='nan')f[1]=NaN;if(it.flaw=='out'){f[0]=3.5;f[1]=3.5}}
+ items.push(it);sp++;if(it.flaw=='dup'){it.flaw=null;items.push({f:f.slice(),c,px:-36,res:0,dy:0,flaw:'dup'})}
+ if(lv==4&&(sp==11||sp==25)){ban=sp==11?'RAIN! The lemons changed!':'HEATWAVE! Everything shifted!';banT=3500}if(lv==2&&sp==Math.floor(C.N*2/3)){ban='AUDIT! Price tags are gone!';banT=3500}}
+function target(){return items.find(i=>!i.res&&i.flaw&&i.px>0)}
+function tool(kk){if(!run||paused)return;const it=target();if(!it){tick('No dirty fruit on the belt right now.');return}
+ const ok={nan:['fill','drop'],out:['clip'],dup:['dup']}[it.flaw].includes(kk),col={fill:'fillna(median)',drop:'dropna()',clip:'clip(IQR)',dup:'drop_duplicates()'}[kk];
+ if(!ok){prof-=5;sfx.err();tick('Wrong tool! '+col+' does not fix '+({nan:'a missing value (try fillna or dropna)',out:'an outlier (try clip)',dup:'a duplicate (try drop_duplicates)'}[it.flaw])+'. -$5','warn');fx.push({s:'-$5',x:it.px,y:LANE-20,l:1,c:'#d6246e'});hud();return}
+ sfx.ok();const fl=it.flaw;it.flaw=null;if(kk=='fill')it.f[1]=.5;if(kk=='clip'){it.f[0]=Math.min(it.f[0],.95);it.f[1]=Math.min(it.f[1],.95)}if(kk=='drop'||kk=='dup')it.rm=1;
+ clog.push(kk=='fill'?'df["size"] = df["size"].fillna(df["size"].median())':kk=='drop'?'df = df.dropna(subset=["size"])':kk=='clip'?'df["colour"] = df["colour"].clip(lower, upper)  # IQR fences':'df = df.drop_duplicates()');tick('Fixed with '+col+'!','good');boom(it.px,LANE,'#ffd447');code()}
+function pick(i){if(sel.includes(i))return;sel.push(i);if(sel.length>2)sel.shift();W=[0,0];B0=0;sfx.click();ctl();code()}
+function retrain(){const r=dots.slice(-15);if(r.length<6||!run){tick('Need at least 6 recent fruit first.','warn');return}prof-=25;retr++;let w=[0,0],bb=0;for(let n=0;n<400;n++){let g=[0,0,0];r.forEach(d=>{const p=pt(d.f),z=w[0]*(p[0]-.5)+w[1]*(p[1]-.5)+bb,e=(d.c?0:1)-1/(1+Math.exp(-z));g[0]+=e*(p[0]-.5);g[1]+=e*(p[1]-.5);g[2]+=e});w[0]+=4*g[0]/r.length;w[1]+=4*g[1]/r.length;bb+=4*g[2]/r.length}W=w;B0=bb;toH();sfx.win();tick('Retrained on the last '+r.length+' fruit (-$25).','good');fx.push({s:'-$25',x:GX,y:30,l:1,c:'#d6246e'});hud();code()}
+function boom(x,y,col){for(let i=0;i<10;i++)fx.push({x,y,vx:(Math.random()-.5)*4,vy:-Math.random()*3-1,l:1,c:col})}
+function resolve(it){it.res=1;if(it.rm){it.pc=it.c;prof+=3;fx.push({s:'+$3',x:GX+20,y:LANE-30,l:1,c:'#0a9b8a'});hud();return}
+ const p=pt(it.f);it.pc=it.flaw=='nan'?1-it.c:cls(p[0],p[1]);const ok=it.pc===it.c,nm=it.c?'lemon':'orange',cost=5,yy=it.pc?40:-30;
+ if(ok){cor++;prof+=10;sfx.ok();boom(GX,LANE+(it.pc?30:-30),it.pc?CB:CA);fx.push({s:'+$10',x:GX+20,y:LANE+yy,l:1,c:'#0a9b8a'});tick('Nice! The '+nm+' went to the right crate (+$10)','good')}
+ else{wr++;prof-=cost;it.c?wl++:wo++;sfx.err();fx.push({s:'-$5',x:GX+20,y:LANE+yy,l:1,c:'#d6246e'});tick(it.flaw=='nan'?'A fruit with a missing value cannot be sorted! Use fillna or dropna next time (-$5)':'Oops! A '+nm+' went to the wrong crate (-$5).','warn')}
+ if(it.flaw=='dup'){prof-=5;tick('The duplicate was double-counted (-$5). Use drop_duplicates!','warn')}
+ M[ok?(it.c?'tp':'tn'):(it.c?'fn':'fp')]++;dots.push({f:it.f,c:it.c,ok,pc:it.pc,fl:it.flaw});hist.push(ok);if(dots.length>80)dots.shift();
+ if((lv==1||lv==2)&&it.flaw!='nan'){const y=it.c===0?1:0,q=1/(1+Math.exp(-(W[0]*(p[0]-.5)+W[1]*(p[1]-.5)+B0))),e=1.2*(y-q);W[0]+=e*(p[0]-.5);W[1]+=e*(p[1]-.5);B0+=e}
+ if(lv==3){mem.push({x:p[0],y:p[1],l:rng()<.2?1-it.c:it.c});mem=mem.slice(-msz);gp=null}
+ hud();code()}
+function finish(){run=false;const acc=cor/Math.max(1,cor+wr),r=Math.max(0,prof)/(C.N*10),stars=C.st.filter(v=>r>=v).length;best[lv]=Math.max(best[lv],stars);sfx.win();hud();
+ card('<h2>Shift over!</h2><div class="star">'+'&#9733;'.repeat(stars)+'<span style="color:#c9b99a">'+'&#9733;'.repeat(3-stars)+'</span></div><p>Accuracy <b>'+Math.round(acc*100)+'%</b> &middot; Profit <b>$'+prof+'</b></p><p><b class="good">You learned: '+C.lr[0]+'.</b> '+C.lr[1]+'</p><p><button class="b" id="rp">Replay</button> <button class="b" id="nx">'+(lv<4?'Next shift':'Final rank')+'</button></p>');
+ $('#rp').onclick=()=>{$('#ov').classList.remove('on');goLv(lv)};$('#nx').onclick=()=>{$('#ov').classList.remove('on');lv<4?goLv(lv+1):end()}}
+function end(){const s=best.reduce((a,c)=>a+c,0),r=Math.min(4,[0,4,7,10,13].filter(v=>s>=v).length-1),sm='Sortbot Factory: '+RK[r]+' | '+s+'/15 stars';
+ card('<h2>Factory closed for the day!</h2><div style="background:var(--yl);border:3px solid var(--ink);border-radius:14px;padding:12px;margin:8px 0;font-size:20px;font-weight:700">'+RK[r]+'<br>'+s+'/15 stars</div><p>Jump to any shift with the numbers on top to collect more stars.</p><p><button class="b" id="e1">Close</button> <button class="b" id="e3">Copy summary</button></p>');
+ $('#e1').onclick=()=>$('#ov').classList.remove('on');$('#e3').onclick=()=>{try{navigator.clipboard.writeText(sm);$('#e3').textContent='Copied!'}catch(e){$('#e3').textContent=sm}}}
+const pos=e=>{const r=bc.getBoundingClientRect();return[(e.clientX-r.left)/r.width,1-(e.clientY-r.top)/r.height]},dd=(p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1]);
+bc.onpointerdown=e=>{if(lv)return;const p=pos(e);drag=dd(p,H[0])<dd(p,H[1])?0:1;H[drag]=p;fromH();try{bc.setPointerCapture(e.pointerId)}catch(x){}code()};
+bc.onpointermove=e=>{if(drag>=0){H[drag]=pos(e);fromH();code()}};bc.onpointerup=()=>drag=-1;
+$('#sp').onclick=()=>{spd=spd%3+1;$('#sp').innerHTML='&#9193; '+spd+'x'};$('#pz').onclick=()=>{paused=!paused;$('#pz').innerHTML=paused?'&#9654;':'&#9208;'};
+function drawBrain(){b.fillStyle='#fff';b.fillRect(0,0,BW,BH);if(lv==3&&!gp){gp=[];for(let j=0;j<34;j++)for(let i=0;i<52;i++)gp.push(knn((i+.5)/52,1-(j+.5)/34))}
+ for(let i=0;i<52;i++)for(let j=0;j<34;j++){const c=lv==3?gp[j*52+i]:cls((i+.5)/52,1-(j+.5)/34);b.fillStyle=c?'rgba(31,181,201,.3)':'rgba(255,140,61,.32)';b.fillRect(i*10,j*10,10,10)}
+ const X=v=>v*BW,Y=v=>(1-v)*BH;if(lv!=3){toH2()}
+ dots.forEach(d=>{const p=pt(d.f);b.fillStyle=d.c?CB:CA;b.strokeStyle=d.ok?'#fff':'#ff4d8d';b.lineWidth=d.ok?2:4;b.beginPath();b.arc(X(cv(p[0])),Y(cv(p[1])),6,0,6.3);b.fill();b.stroke()});
+ if(lv==3)mem.forEach(m=>{b.strokeStyle=INK;b.lineWidth=1;b.fillStyle=m.l?CB:CA;b.beginPath();b.rect(X(m.x)-4,Y(m.y)-4,8,8);b.fill();b.stroke()});
+ items.forEach(it=>{if(!it.res){const p=pt(it.f);b.strokeStyle=INK;b.lineWidth=2.5;b.setLineDash([3,3]);b.beginPath();b.arc(X(cv(p[0])),Y(cv(p[1])),8,0,6.3);b.stroke();b.setLineDash([])}});
+ if(lv==0)H.forEach(h=>{b.fillStyle='#ffd447';b.strokeStyle=INK;b.lineWidth=4;b.beginPath();b.arc(X(h[0]),Y(h[1]),12,0,6.3);b.fill();b.stroke()});
+ b.fillStyle=INK;b.font='bold 13px Fredoka,sans-serif';b.fillText(SN[sel[0]].toUpperCase()+' \u2192',BW-110,BH-10);b.fillText(SN[sel[1]].toUpperCase()+' \u2191',10,20);b.fillStyle='#c25a12';b.fillText('\u25CF ORANGE side',10,BH-10);b.fillStyle='#0a8798';b.fillText('\u25CF LEMON side',150,BH-10);
+ const al=lv==4&&hist.length>=8&&hist.slice(-8).filter(x=>x).length<5?'ALARM: quality dropped! Retrain?':'',bn=ban||al;
+ if(bn){b.fillStyle=al&&!ban?'#ff4d8d':'#ffd447';b.fillRect(0,BH/2-20,BW,40);b.fillStyle=al&&!ban?'#fff':INK;b.font='bold 18px Fredoka,sans-serif';b.fillText(bn,14,BH/2+6)}}
+function toH2(){const[a,c]=H;b.strokeStyle=INK;b.lineWidth=4;b.lineCap='round';b.beginPath();b.moveTo(a[0]*BW+(a[0]-c[0])*BW*3,(1-a[1])*BH-(a[1]-c[1])*BH*3);b.lineTo(c[0]*BW+(c[0]-a[0])*BW*3,(1-c[1])*BH-(c[1]-a[1])*BH*3);b.stroke()}
+function fruit(it){const f=it.f,fl=it.flaw,r=fl=='out'?22:7+cv(f[1])*12,x=it.px,y=LANE+it.dy,hu=28+cv(f[0])*35;t.fillStyle='hsl('+hu+',95%,55%)';t.strokeStyle='hsl('+hu+',80%,32%)';t.lineWidth=3;t.beginPath();t.arc(x,y,r,0,6.3);t.fill();t.stroke();t.fillStyle='#fff8';t.beginPath();t.arc(x-r*.35,y-r*.4,r*.22,0,6.3);t.fill();t.fillStyle=INK;t.beginPath();t.arc(x-r*.3,y+r*.05,r*.11,0,6.3);t.arc(x+r*.3,y+r*.05,r*.11,0,6.3);t.fill();
+ if(fl&&!it.res){t.font='bold 15px Fredoka,sans-serif';t.fillStyle='#d6246e';t.fillText(fl=='nan'?'?':fl=='out'?'!!':'copy',x-10,y-r-6);if(it===target()){t.strokeStyle='#ffd447';t.lineWidth=4;t.beginPath();t.arc(x,y,r+6,0,6.3);t.stroke()}}}
+function drawBelt(){t.fillStyle='#cfeeff';t.fillRect(0,0,BW,150);t.fillStyle='#ffe9b8';t.fillRect(0,118,BW,32);
+ t.fillStyle=CA;t.fillRect(GX-48,2,96,24);t.fillStyle=CB;t.fillRect(GX-48,124,96,24);t.strokeStyle=INK;t.lineWidth=3;t.strokeRect(GX-48,2,96,24);t.strokeRect(GX-48,124,96,24);t.fillStyle='#fff';t.font='bold 13px Fredoka,sans-serif';t.fillText('\uD83C\uDF4A ORANGES',GX-42,19);t.fillText('\uD83C\uDF4B LEMONS',GX-38,141);
+ t.fillStyle='#4a4e69';t.fillRect(0,LANE-22,BW,44);t.strokeStyle='#ffd447';t.lineWidth=5;for(let x=-off%36;x<BW;x+=36){t.beginPath();t.moveTo(x,LANE-22);t.lineTo(x+14,LANE+22);t.stroke()}
+ t.font='30px serif';t.fillText('\uD83E\uDD16',GX-17,LANE-30+Math.sin(off/12)*2);items.forEach(fruit);
+ fx.forEach(p=>{t.globalAlpha=Math.max(p.l,0);t.fillStyle=p.c;if(p.s){t.font='bold 18px Fredoka,sans-serif';t.fillText(p.s,p.x,p.y-(1-p.l)*20)}else t.fillRect(p.x,p.y,5,5);t.globalAlpha=1});
+ if(lv==4&&sp>10){t.strokeStyle='#4361ee99';t.lineWidth=2;for(let i=0;i<22;i++){const x=(i*41+off*3)%BW,y=(i*53+off*5)%150;t.beginPath();t.moveTo(x,y);t.lineTo(x-4,y+12);t.stroke()}}}
+function frame(now){const dt=Math.min(50,now-lastT);lastT=now;
+ if(run&&!paused){off+=.13*dt*spd;spT+=dt*spd;if(sp<C.N&&spT>=C.iv){spT=0;spawn();hud()}
+  items.forEach(it=>{it.px+=.13*dt*spd;if(!it.res&&it.px>=GX)resolve(it);if(it.res)it.dy+=(it.pc?1:-1)*.1*dt*spd});
+  items=items.filter(it=>!(it.res&&Math.abs(it.dy)>52));fx.forEach(p=>{p.l-=.02*spd;if(!p.s){p.x+=p.vx;p.y+=p.vy;p.vy+=.15}});fx=fx.filter(p=>p.l>0);if(banT>0){banT-=dt;if(banT<=0)ban=''}
+  if(sp>=C.N&&!items.length)finish()}
+ drawBrain();drawBelt();requestAnimationFrame(frame)}
+requestAnimationFrame(frame);goLv(0);
+</script></body></html>
